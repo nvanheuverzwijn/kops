@@ -88,6 +88,22 @@ func (b *BastionModelBuilder) Build(c *fi.ModelBuilderContext) error {
 		c.AddTask(t)
 	}
 
+	for _, src := range bastionGroups {
+		// Allow incoming SSH traffic to bastions
+		for _, sshAccess := range b.Cluster.Spec.SSHAccess {
+			t := &awstasks.SecurityGroupRule{
+				Name:      s("ssh-external-to-bastion-" + sshAccess),
+				Lifecycle: b.SecurityLifecycle,
+				SecurityGroup: src.Task,
+				Protocol:      s("tcp"),
+				FromPort:      i64(22),
+				ToPort:        i64(22),
+				CIDR:          s(sshAccess),
+			}
+			c.AddTask(t)
+		}
+	}
+
 	// Allow incoming SSH traffic to bastions, through the ELB
 	// TODO: Could we get away without an ELB here?  Tricky to fix if dns-controller breaks though...
 	for _, dest := range bastionGroups {
